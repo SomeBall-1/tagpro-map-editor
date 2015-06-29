@@ -1486,7 +1486,8 @@ $(function() {
   }
 
   $('#test, #testeu').click(function(e) {
-    var validStr = isValidMapStr();
+		alert("Cannot test from this page");
+    /*var validStr = isValidMapStr();
     if (validStr != "Valid") {
       alert(validStr);
       return false;
@@ -1499,7 +1500,7 @@ $(function() {
         alert("Test couldn't get started.")
       }
       //console.log('back from test', data)
-    });
+    });*/
     return false;
   });
   
