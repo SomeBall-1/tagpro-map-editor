@@ -536,7 +536,7 @@ $(function() {
     unselect: function() {
       clipboardReady = false;
       clipboardTiles = [];
-      clipbaordSource = [[]];
+      clipboardSource = [[]];
       clearHighlights();
     },
     down: function(x,y) {
@@ -1613,7 +1613,7 @@ $(function() {
       $button.data('tileType', type);
       type.drawOn($button.find('.tile'));
       $button.click('click', function(e) {
-        if (selectedTool == wire) {
+        if (selectedTool == wire || selectedTool == clipboard) {
           $('#toolPencil').trigger('click');
         }
         setBrushTileType(type);
@@ -2338,7 +2338,6 @@ $(function() {
     image.src = png;
     image.onload = function() {
       $('body').css('cursor','wait');
-      console.log($('body').css('cursor'));
       ctx.scale(type[0],type[1]);
       ctx.drawImage(image,0,0,canvas.width*type[0],canvas.height*type[1]);
       png = canvas.toDataURL();
