@@ -703,22 +703,60 @@ $(function() {
     }
   })
 
+  var wireCalculatedAffected = {};
   var wire = new Tool({
     type: 'special',
     unselect: function() {
       clearHighlights();
       this.selectedSwitch = null;
     },
+    down: function(x,y) {
+      this.downX = x;
+      this.downY = y;
+      wireCalculatedAffected = {};
+    },
+    up: function(x,y) {
+      this.downX = undefined;
+      this.downY = undefined;
+    },
     stateChange: function() {
       this.refreshHighlights();
     },
     getState: function() {
-      console.log('storing state', this.selectedSwitch && xy(this.selectedSwitch))
+      //console.log('storing state', this.selectedSwitch && xy(this.selectedSwitch))
       return {selectedSwitch: this.selectedSwitch}
     },
     setState: function(state) {
       this.selectedSwitch = state.selectedSwitch;
-      console.log('restored state', this.selectedSwitch && xy(this.selectedSwitch))
+      //console.log('restored state', this.selectedSwitch && xy(this.selectedSwitch))
+    },
+    speculateDrag: function(x,y) {
+      if(this.selectedSwitch && this.selectedSwitch.type == switchType) {
+        var coordinates = rectFn(this.downX===undefined?x:this.downX, this.downY===undefined?y:this.downY, x, y, true);
+        var calculatedTiles = [];
+        
+        if(!this.selectedSwitch.affected) {
+          this.selectedSwitch.affected = {};
+        }
+        var affected = {};
+        for(var key in (this.selectedSwitch.affected||{})) {
+          affected[key] = this.selectedSwitch.affected[key];
+        }
+        
+        for (var i = 0; i < coordinates.length; i++) {
+          var x = coordinates[i].x;
+          var y = coordinates[i].y;
+          var tile = tiles[x][y];
+          if(tile.type == bombType || tile.type == onFieldType || tile.type == offFieldType || tile.type == redFieldType || tile.type == blueFieldType) {
+            var hitKey = xy(tile);          
+            if(affected[hitKey]) delete affected[hitKey];
+            else affected[hitKey] = tile;
+          }
+          calculatedTiles.push(new TileState(tile));
+        }
+        wireCalculatedAffected = affected;
+        return new UndoStep(calculatedTiles);
+      }
     },
     speculateUp: function(x,y) {
       var tile = tiles[x][y];
@@ -735,16 +773,16 @@ $(function() {
       } else if (tile.type == switchType) {
         this.selectedSwitch = tile;
       } else if (this.selectedSwitch && this.selectedSwitch.type == switchType) {
-        var affected = this.selectedSwitch.affected || ( this.selectedSwitch.affected={});
+        /*var affected = this.selectedSwitch.affected || ( this.selectedSwitch.affected={});
         var affected = {};
         for (var key in (this.selectedSwitch.affected||{})) {
-          affected[key] = this.selectedSwitch.affected[key];;
+          affected[key] = this.selectedSwitch.affected[key];
         }
         var hitKey = xy(tile);
         if (affected[hitKey]) delete affected[hitKey];
         else affected[hitKey] = tile;
-        
-        change = new TileState(this.selectedSwitch, {affected: affected});
+        */
+        change = new TileState(this.selectedSwitch, {affected: wireCalculatedAffected});
       }
       return new UndoStep(change ? [change] : []);
     }
