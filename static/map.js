@@ -783,23 +783,54 @@ $(function() {
     speculateDrag: function(x,y) {
       if(clipboardReady) {
         var size = clipboardTiles.length;
-        var center = {x: Math.floor((clipboardTiles[size-1].x+clipboardTiles[0].x)/2), y: Math.floor((clipboardTiles[size-1].y+clipboardTiles[0].y)/2)};
         var changes = [];
         var count = 0;
-        for(var ix = x-(center.x-clipboardTiles[0].x);ix <= x+(clipboardTiles[size-1].x-center.x);ix++) {
-          for(var iy = y-(center.y-clipboardTiles[0].y);iy <= y+(clipboardTiles[size-1].y-center.y);iy++) {
-            if (ix>=0 && iy>=0 && ix<width && iy<height) {
-              if(!clipboardSource[ix] || !clipboardSource[ix][iy]) {
-                var change = $.extend(true, {}, tiles[clipboardTiles[count].x][clipboardTiles[count].y]);
-                delete change.x;
-                delete change.y;
-                changes.push(new TileState(tiles[ix][iy], change));
+        if(shiftDown) {
+          var clipWidth = clipboardTiles[size-1].x-clipboardTiles[0].x+1;
+          var clipHeight = clipboardTiles[size-1].y-clipboardTiles[0].y+1;
+          var offset = x-(clipboardTiles[0].x%clipWidth);
+          if(offset<0) offset = clipWidth-Math.abs(offset%clipWidth);
+          else offset %= clipWidth;
+          if(offset>=clipWidth) offset = 0;
+          var left = x-offset;
+          offset = y-(clipboardTiles[0].y%clipHeight);
+          if(offset<0) offset = clipHeight-Math.abs(offset%clipHeight);
+          else offset %= clipHeight;
+          if(offset>=clipHeight) offset = 0;
+          var top = y-offset;
+          
+          for(var ix = left;ix < left+clipWidth;ix++) {
+            for(var iy = top;iy < top+clipHeight;iy++) {
+              if (ix>=0 && iy>=0 && ix<width && iy<height) {
+                if(!clipboardSource[ix] || !clipboardSource[ix][iy]) {
+                  var change = $.extend(true, {}, tiles[clipboardTiles[count].x][clipboardTiles[count].y]);
+                  delete change.x;
+                  delete change.y;
+                  changes.push(new TileState(tiles[ix][iy], change));
+                }
               }
+              count++;
             }
-            count++;
           }
+          return new UndoStep(changes);
+          
+        } else {
+          var center = {x: Math.floor((clipboardTiles[size-1].x+clipboardTiles[0].x)/2), y: Math.floor((clipboardTiles[size-1].y+clipboardTiles[0].y)/2)};
+          for(var ix = x-(center.x-clipboardTiles[0].x);ix <= x+(clipboardTiles[size-1].x-center.x);ix++) {
+            for(var iy = y-(center.y-clipboardTiles[0].y);iy <= y+(clipboardTiles[size-1].y-center.y);iy++) {
+              if (ix>=0 && iy>=0 && ix<width && iy<height) {
+                if(!clipboardSource[ix] || !clipboardSource[ix][iy]) {
+                  var change = $.extend(true, {}, tiles[clipboardTiles[count].x][clipboardTiles[count].y]);
+                  delete change.x;
+                  delete change.y;
+                  changes.push(new TileState(tiles[ix][iy], change));
+                }
+              }
+              count++;
+            }
+          }
+          return new UndoStep(changes);
         }
-        return new UndoStep(changes);
       }
       
       var coordinates = rectFn(this.downX===undefined?x:this.downX, this.downY===undefined?y:this.downY, x, y, true);
@@ -1550,7 +1581,7 @@ $(function() {
     .on('mousedown', '.tile', function(e) {
       e.preventDefault();
       if (e.which==1) {
-        if(!e.shiftKey) {
+        if(!e.shiftKey || selectedTool == clipboard) {
           var x = $(this).data('x');
           var y = $(this).data('y');
           if (!controlDown) {
