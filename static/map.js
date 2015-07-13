@@ -2241,7 +2241,6 @@ $(function() {
     var optHeight = optResizeParams && optResizeParams.height;
     var deltaX = (optResizeParams && optResizeParams.deltaX) || 0;
     var deltaY = (optResizeParams && optResizeParams.deltaY) || 0;
-    var mapElem = optResizeParams && optResizeParams.mapElem;
     var canvas = document.getElementById('importCanvas');
     var ctx = canvas.getContext('2d');
     var json = JSON.parse(jsonString);
@@ -2251,17 +2250,10 @@ $(function() {
       var h = img.height;
       optWidth = optWidth || w;
       optHeight = optHeight || h;
-      if(mapElem) {
-        canvas.width = optWidth;
-        canvas.height = optHeight;
-        ctx.webkitImageSmoothingEnabled = ctx.imageSmoothingEnabled = ctx.mozImageSmoothingEnabled = ctx.oImageSmoothingEnabled = ctx.msImageSmoothinEnabled = false;
-        ctx.drawImage(img,0,0,optWidth,optHeight);
-      } else {
-        canvas.width = w;
-        canvas.height = h;
-        ctx.drawImage(img,0,0);
-      }
-      var imgd = ctx.getImageData(0, 0, mapElem?optWidth:w, mapElem?optHeight:h).data;
+      canvas.width = w;
+      canvas.height = h;
+      ctx.drawImage(img,0,0);
+      var imgd = ctx.getImageData(0, 0, w, h).data;
       var typeByColor = {};
       tileTypes.forEach(function(type) {
         typeByColor[type.rgb] = type;
@@ -2276,8 +2268,8 @@ $(function() {
           var sourceY = destY - deltaY;
           var type;
           //console.log('sourceX=', sourceX,'sourceY=', sourceY)
-          if (sourceX<(mapElem?optWidth:w) && sourceY<(mapElem?optHeight:h) && sourceX>=0 && sourceY>=0) {
-            var i = (sourceY*(mapElem?optWidth:w) + sourceX)*4;
+          if (sourceX<w && sourceY<h && sourceX>=0 && sourceY>=0) {
+            var i = (sourceY*w + sourceX)*4;
             var pixel = imgd[i] | (imgd[i+1]<<8) | (imgd[i+2]<<16);
             type = typeByColor[pixel] || emptyType;
             if(type == redSpawnType) {
@@ -2564,11 +2556,11 @@ $(function() {
     return json;
   }
   
-  function resizeTo(width, height, deltaX, deltaY, mapElem) {
+  function resizeTo(width, height, deltaX, deltaY) {
     var png = getPngBase64Url();
     var json = makeLogicString();
 
-    restoreFromPngAndJson(png, json, {width: width, height: height, deltaX: deltaX, deltaY: deltaY, mapElem: mapElem});
+    restoreFromPngAndJson(png, json, {width: width, height: height, deltaX: deltaX, deltaY: deltaY});
   }
 
   var $resizeWidthTo = $('#resizeWidthTo');
@@ -2622,10 +2614,7 @@ $(function() {
             width = Math.max(1, width);
             height = Math.max(1, height);
           }
-          if($('#resizeMapElem').is(':checked'))
-            resizeTo(width, height, 0, 0, true);
-          else
-            resizeTo(width, height, deltaX, deltaY);
+          resizeTo(width, height, deltaX, deltaY);
           console.log('resizing to',width,height);
           $(this).dialog( "close" );
         }
