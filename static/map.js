@@ -813,6 +813,7 @@ $(function() {
       clipboardTiles = [];
       clipboardSource = [[]];
       clearHighlights();
+      clearPotentialHighlights();
     },
     down: function(x,y) {
       this.downX = x;
@@ -837,7 +838,7 @@ $(function() {
         else offset %= clipHeight;
         if(offset>=clipHeight) offset = 0;
         var top = y-offset;
-          
+        
         for(var ix = left;ix < left+clipWidth;ix++) {
           for(var iy = top;iy < top+clipHeight;iy++) {
             if (ix>=0 && iy>=0 && ix<width && iy<height) {
@@ -854,11 +855,19 @@ $(function() {
         return new UndoStep(changes);
           
       } else {
+        if(controlDown) {
+          var center = {x: Math.floor((clipboardTiles[size-1].x+clipboardTiles[0].x)/2), y: Math.floor((clipboardTiles[size-1].y+clipboardTiles[0].y)/2)};
+          for(var i = clipboardTiles[0].x;i <= clipboardTiles[size-1].x;i++) {
+            for(var j = clipboardTiles[0].y;j <= clipboardTiles[size-1].y;j++) {
+              changes.push(new TileState(tiles[i][j], {type: emptyType, redHighlight: true}));
+            }
+          }
+        }
         var center = {x: Math.floor((clipboardTiles[size-1].x+clipboardTiles[0].x)/2), y: Math.floor((clipboardTiles[size-1].y+clipboardTiles[0].y)/2)};
         for(var ix = x-(center.x-clipboardTiles[0].x);ix <= x+(clipboardTiles[size-1].x-center.x);ix++) {
           for(var iy = y-(center.y-clipboardTiles[0].y);iy <= y+(clipboardTiles[size-1].y-center.y);iy++) {
             if (ix>=0 && iy>=0 && ix<width && iy<height) {
-              if(!clipboardSource[ix] || !clipboardSource[ix][iy]) {
+              if(controlDown || !clipboardSource[ix] || !clipboardSource[ix][iy]) {
                 var change = $.extend(true, {}, tiles[clipboardTiles[count].x][clipboardTiles[count].y]);
                 delete change.x;
                 delete change.y;
@@ -893,80 +902,14 @@ $(function() {
       this.downX = undefined;
       this.downY = undefined;
       
-      if(clipboardTiles.length>1)
+      if(clipboardReady && controlDown) selectedTool.unselect();
+      else if(clipboardTiles.length>1)
       {
         for(var i = 0;i < clipboardTiles.length;i++)
         {
           tiles[clipboardTiles[i].x][clipboardTiles[i].y].highlight(true);
         }
         clipboardReady = true;
-      }
-    }
-  });
-
-  var moveReady = false;
-  var moveTiles = [];
-  var move = new Tool({
-    unselect: function() {
-      moveReady = false;
-      moveTiles = [];
-      clearHighlights();
-    },
-    down: function(x,y) {
-      this.downX = x;
-      this.downY = y;
-    },
-    speculateDrag: function(x,y) {
-      if(!moveReady) return false;
-      
-      var size = moveTiles.length;
-      var changes = [];
-      var center = {x: Math.floor((moveTiles[size-1].x+moveTiles[0].x)/2), y: Math.floor((moveTiles[size-1].y+moveTiles[0].y)/2)};
-      for(var i = moveTiles[0].x;i <= moveTiles[size-1].x;i++) {
-        for(var j = moveTiles[0].y;j <= moveTiles[size-1].y;j++) {
-          changes.push(new TileState(tiles[i][j], {type: emptyType, noHighlight: true}));
-        }
-      }
-      var count = 0;
-      for(var ix = x-(center.x-moveTiles[0].x);ix <= x+(moveTiles[size-1].x-center.x);ix++) {
-        for(var iy = y-(center.y-moveTiles[0].y);iy <= y+(moveTiles[size-1].y-center.y);iy++) {
-          if (ix>=0 && iy>=0 && ix<width && iy<height) {
-            var change = $.extend(true, {}, tiles[moveTiles[count].x][moveTiles[count].y]);
-            delete change.x;
-            delete change.y;
-            changes.push(new TileState(tiles[ix][iy], change));
-          }
-          count++;
-        }
-      }
-      return new UndoStep(changes);
-    },
-    speculateUp: function(x,y) {
-      if(moveReady) return false;
-      
-      var coordinates = rectFn(this.downX===undefined?x:this.downX, this.downY===undefined?y:this.downY, x, y, true);
-      var calculatedTiles = [];
-      
-      moveTiles = [];
-      for (var i = 0; i < coordinates.length; i++) {
-        var ix = coordinates[i].x;
-        var iy = coordinates[i].y;
-        calculatedTiles.push(new TileState(tiles[ix][iy]));
-        moveTiles.push({x: ix, y: iy});
-      }
-      return new UndoStep(calculatedTiles);
-    },
-    up: function(x,y) {
-      this.downX = undefined;
-      this.downY = undefined;
-      
-      if(moveReady) selectedTool.unselect();
-      else if(moveTiles.length>1) {
-        for(var i = 0;i < moveTiles.length;i++)
-        {
-          tiles[moveTiles[i].x][moveTiles[i].y].highlight(true);
-        }
-        moveReady = true;
       }
     }
   });
@@ -1038,6 +981,7 @@ $(function() {
     this.radius = 'radius' in changes ? changes.radius : source.radius;
     this.weight = 'weight' in changes ? changes.weight : source.weight;
     this.noHighlight = changes.noHighlight;
+    this.redHighlight = changes.redHighlight;
   }
   TileState.prototype.equals = function(other) {
     if (this.x!=other.x
@@ -1473,7 +1417,7 @@ $(function() {
     dirtyWalls = {};
   }
 
-  var $map = $('#map');
+  var $map = $('#map').attr('oncontextmenu','return false;');
   var $palette = $('#palette');
 
   var height;
@@ -1617,8 +1561,11 @@ $(function() {
   function setSpeculativeStep(step) {
     applySymmetry(step);
     $.each(step.states, function(idx, state) {
-      if(!state.noHighlight)
+      if(!state.noHighlight) {
+        var color = state.redHighlight ? '#F44A4A' : '#99FF99';
+        tiles[state.x][state.y].elem.find('.potentialHighlight').css('backgroundColor',color);
         tiles[state.x][state.y].highlightWithPotential(true);
+      }
     });
   }
   
@@ -1668,6 +1615,7 @@ $(function() {
       if (!change) {
         change = selectedTool.speculateUp && selectedTool.speculateUp(x,y)
       }
+      selectedTool.setState(st);
       setSpeculativeStep(change);
       return;
     }
@@ -1682,7 +1630,7 @@ $(function() {
         if(!e.shiftKey || selectedTool == clipboard) {
           var x = $(this).data('x');
           var y = $(this).data('y');
-          if (!controlDown) {
+          if (!controlDown || selectedTool == clipboard) {
             mouseDown = true;
           
             selectedTool.down(x,y);
@@ -1807,7 +1755,7 @@ $(function() {
       if (e.which==1) {
         var x = $(this).data('x');
         var y = $(this).data('y');
-        if (controlDown) {
+        if (controlDown && selectedTool != clipboard) {
           var eyeDropBrushType = tiles[x][y].type;
           setBrushTileType(eyeDropBrushType);
         } else {
@@ -2001,7 +1949,7 @@ $(function() {
         tile = new Tile({x: -1, y: -1, type: type}, $button);
       type.drawOn($button.find('.tile'), tile);
       $button.click('click', function(e) {
-        if (selectedTool == wire || selectedTool == clipboard || selectedTool == move) {
+        if (selectedTool == wire || selectedTool == clipboard) {
           $('#toolPencil').trigger('click');
         }
         setBrushTileType(type);
@@ -2110,7 +2058,6 @@ $(function() {
   $('#toolFill').data('tool', fill);
   $('#toolWire').data('tool', wire);
   $('#toolClipboard').data('tool', clipboard);
-  $('#toolMove').data('tool', move);
   $('#tools .btn').click(function() {
     selectedTool.unselect.call(selectedTool);
     $('#tools .btn').removeClass('active');
