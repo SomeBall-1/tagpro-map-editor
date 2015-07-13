@@ -82,7 +82,9 @@ a.selectedTool {
     background-color: red;
 }
 #resizeWidth, #resizeHeight {
-    padding-right: 0px;
+    padding: 6px 6px;
+    font-weight: normal;
+    text-align: center;
 }
 table {
     margin: auto;
@@ -94,6 +96,9 @@ label.radioLabel {
     display: inline-block;
     width: 20%;
     font-weight: normal;
+}
+span.input-group-addon {
+    padding: 6px 6px;
 }
 span.glyphicon-flipped {
     -webkit-transform: scaleX(-1);
@@ -112,7 +117,7 @@ span.glyphicon-rotate-right {
     transform: rotate(90deg);
 }
 span.off-center {
-    left: -1px;
+    left: -3px;
 }
 span.radioSpan {
     margin: 0% 10% 0% 10%;

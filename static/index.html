@@ -69,12 +69,18 @@
     <div class="form-group">
       <div class="input-group">
         <span class="input-group-addon">Map Size:</span>
-        <input type="number" class="form-control" placeholder="Width" id="resizeWidth">
+        <label class="form-control" id="resizeWidth">20</label>
         <span class="input-group-addon">by</span>
-        <input type="number" class="form-control" placeholder="Height" id="resizeHeight">
+        <label class="form-control" id="resizeHeight">20</label>
         <span class="input-group-btn">
-          <button id="resize" class="btn btn-default" title="Resize the map to the entered dimensions.">
+          <button id="resize" class="btn btn-default" title="Resize the map to the entered dimensions" style="padding: 6px 10px;">
             <span class="glyphicon glyphicon-resize-full"></span>
+          </button>
+          <button id="addWidth" class="btn btn-default" title="Add one or more columns to the map" style="padding: 6px 10px;">
+            <span class="glyphicon glyphicon-resize-horizontal"></span>
+          </button>
+          <button id="addHeight" class="btn btn-default" title="Add one or more rows to the map" style="padding: 6px 10px;">
+            <span class="glyphicon glyphicon-resize-vertical"></span>
           </button>
         </span>
       </div>
@@ -124,6 +130,8 @@
           <a id="toolFill" class="btn btn-default btn-sm" title="Fill - fill an entire area"><span class="glyphicon glyphicon-tint off-center"></span></a>
 
           <a id="toolWire" class="btn btn-default btn-sm" title="Wire - select an emitter (buttons, portals) and then click on the receiver(s) (gates, bombs, portals) to complete the link"><span class="glyphicon glyphicon-wrench off-center"></span></a>
+          
+          <a id="toolMove" class="btn btn-default btn-sm" title="Move - select an area to move, then drag it elsewhere in its entirety"><span class="glyphicon glyphicon-move off-center"></span></a>
           
           <a id="toolClipboard" class="btn btn-default btn-sm" title="Copy and Paste - select an area to duplicate, then paste it elsewhere in its entirety"><span class="glyphicon glyphicon-folder-close off-center"></span></a>
         </div>
@@ -287,34 +295,39 @@
         <td></td>
         <td style='text-align:center'>
           <!--<input type='checkbox' id='resizeAnchorTop'/>!-->
-          <a id="resizeAnchorTop" class="btn btn-xs btn-default" title="Extend Left"><span class="glyphicon glyphicon-arrow-up"></span></a>
+          <a id="resizeAnchorTop" class="btn btn-xs btn-default" title="Extend/Shrink Up"><span class="glyphicon glyphicon-arrow-up"></span></a>
         </td>
         <td></td>
       </tr>
       <tr>
         <td>
           <!--<input type='checkbox' id='resizeAnchorLeft'/>!-->
-          <a id="resizeAnchorLeft" class="btn btn-xs btn-default" title="Extend Left"><span class="glyphicon glyphicon-arrow-left"></span></a>
+          <a id="resizeAnchorLeft" class="btn btn-xs btn-default" title="Extend/Shrink Left"><span class="glyphicon glyphicon-arrow-left"></span></a>
         </td>
         <td style='text-align:center'>
           
         </td>
         <td>
           <!--<input type='checkbox' id='resizeAnchorRight'/>!-->
-          <a id="resizeAnchorRight" class="btn btn-xs btn-default" title="Extend Left"><span class="glyphicon glyphicon-arrow-right"></span></a>
+          <a id="resizeAnchorRight" class="btn btn-xs btn-default" title="Extend/Shrink Right"><span class="glyphicon glyphicon-arrow-right"></span></a>
         </td>
       </tr>
       <tr>
         <td></td>
         <td style='text-align:center'>
           <!--<input type='checkbox' id='resizeAnchorBottom'/>!-->
-          <a id="resizeAnchorBottom" class="btn btn-xs btn-default" title="Extend Left"><span class="glyphicon glyphicon-arrow-down"></span></a>
+          <a id="resizeAnchorBottom" class="btn btn-xs btn-default" title="Extend/Shrink Down"><span class="glyphicon glyphicon-arrow-down"></span></a>
         </td>
         <td></td>
       </tr>
     </table><br>
     <div>
       Width: <input type='text' id='resizeWidthTo' style='width:4em' /> Height: <input type='text' id='resizeHeightTo' style='width:4em' />
+    </div><br>
+    <div>
+      <label class="radioLabel" style="width: auto">
+        <input type='checkbox' name="resizeAll"/>  Resize map elements
+      </label>
     </div>
   </div>
   
