@@ -902,7 +902,7 @@ $(function() {
       this.downX = undefined;
       this.downY = undefined;
       
-      if(clipboardReady && controlDown) selectedTool.unselect();
+      if(clipboardReady && controlDown) selectedTool.unselect.call(selectedTool);
       else if(clipboardTiles.length>1)
       {
         for(var i = 0;i < clipboardTiles.length;i++)
@@ -911,6 +911,122 @@ $(function() {
         }
         clipboardReady = true;
       }
+    }
+  });
+  
+  var addWidth = new Tool({
+    down: function(x,y) {
+      this.downX = x;
+      this.downY = y;
+    },
+    speculateDrag: function(x,y) {
+      var coordinates = rectFn(this.downX===undefined?x:this.downX, this.downY===undefined?y:this.downY, x, y, true);
+      var calculatedTiles = [];
+      for (var i = 0; i < coordinates.length; i++) {
+        for(var j = 0; j < height; j++) {
+          calculatedTiles.push(new TileState(tiles[coordinates[i].x][j], {mirror: true, redHighlight: controlDown?true:false}));
+        }
+      }
+      return new UndoStep(calculatedTiles);
+    },
+    up: function(x,y) {
+      var extra = Math.abs(x-this.downX)+1;
+      var start = Math.min(x,this.downX);
+      this.downX = undefined;
+      this.downY = undefined;
+      
+      var canvas = document.createElement('canvas');
+      canvas.height = tiles[0].length;
+      canvas.width = tiles.length+(controlDown?-extra:extra);
+      var ctx = canvas.getContext('2d');
+    
+      var tilemap = [[]];
+      for(var x = 0;x < width;x++) {
+        for(var y = 0;y < height;y++) {
+          if(x<start) {
+            if(!tilemap[x]) tilemap[x] = [];
+            tilemap[x][y] = {x: x, y: y};
+          }
+          else {
+            if(!tilemap[x]) tilemap[x] = [];
+            tilemap[x][y] = {x: x+(controlDown?-extra:extra), y: y};
+          }
+        }
+      }
+      
+      var json = transformLogic(makeLogic(),tilemap);
+      var png = getPngBase64Url();
+      var image = new Image();
+      image.src = png;
+      image.onload = function() {
+        $('body').css('cursor','wait');
+        ctx.webkitImageSmoothingEnabled = ctx.imageSmoothingEnabled = ctx.mozImageSmoothingEnabled = ctx.oImageSmoothingEnabled = ctx.msImageSmoothinEnabled = false;
+        ctx.drawImage(image,0,0,start,image.height,0,0,start,image.height);
+        ctx.drawImage(image,start+(controlDown?extra:0),0,image.width-start,image.height,start+(controlDown?0:extra),0,image.width-start,image.height);
+        png = canvas.toDataURL();
+        restoreFromPngAndJson(png, makeLogicString(json), false, false);
+      };
+      
+      $('#addWidth').removeClass('active').blur();
+      selectedTool = oldTool;
+    }
+  });
+  
+  var addHeight = new Tool({
+    down: function(x,y) {
+      this.downX = x;
+      this.downY = y;
+    },
+    speculateDrag: function(x,y) {
+      var coordinates = rectFn(this.downX===undefined?x:this.downX, this.downY===undefined?y:this.downY, x, y, true);
+      var calculatedTiles = [];
+      for (var i = 0; i < coordinates.length; i++) {
+        for(var j = 0; j < width; j++) {
+          calculatedTiles.push(new TileState(tiles[j][coordinates[i].y], {mirror: true, redHighlight: controlDown?true:undefined}));
+        }
+      }
+      return new UndoStep(calculatedTiles);
+    },
+    up: function(x,y) {
+      var extra = Math.abs(y-this.downY)+1;
+      var start = Math.min(y,this.downY);
+      this.downX = undefined;
+      this.downY = undefined;
+      
+      var canvas = document.createElement('canvas');
+      canvas.height = tiles[0].length+(controlDown?-extra:extra);
+      canvas.width = tiles.length;
+      var ctx = canvas.getContext('2d');
+    
+      var tilemap = [[]];
+      for(var x = 0;x < width;x++) {
+        for(var y = 0;y < height;y++) {
+          if(y<start) {
+            if(!tilemap[x]) tilemap[x] = [];
+            tilemap[x][y] = {x: x, y: y};
+          }
+          else {
+            if(!tilemap[x]) tilemap[x] = [];
+            tilemap[x][y] = {x: x, y: y+(controlDown?-extra:extra)};
+          }
+        }
+      }
+      
+      var json = transformLogic(makeLogic(),tilemap);
+      var png = getPngBase64Url();
+      var image = new Image();
+      image.src = png;
+      image.onload = function() {
+        $('body').css('cursor','wait');
+        ctx.webkitImageSmoothingEnabled = ctx.imageSmoothingEnabled = ctx.mozImageSmoothingEnabled = ctx.oImageSmoothingEnabled = ctx.msImageSmoothinEnabled = false;
+        ctx.drawImage(image,0,0,image.width,start,0,0,image.width,start);
+        ctx.drawImage(image,0,start+(controlDown?extra:0),image.width,image.height-start,0,start+(controlDown?0:extra),image.width,image.height-start);
+        png = canvas.toDataURL();
+        restoreFromPngAndJson(png, makeLogicString(json), false, false);
+      };
+      
+      $('#addHeight').removeClass('active').blur();
+      selectedTool = oldTool;
     }
   });
 
@@ -1423,7 +1539,7 @@ $(function() {
   var height;
   var width;
   var $tiles;
-  window.tiles = null;
+  var tiles;
 
   function buildTilesWith(types) {
     width = types.length;
@@ -1630,7 +1746,7 @@ $(function() {
         if(!e.shiftKey || selectedTool == clipboard) {
           var x = $(this).data('x');
           var y = $(this).data('y');
-          if (!controlDown || selectedTool == clipboard) {
+          if (!controlDown || selectedTool == clipboard || selectedTool == addWidth || selectedTool == addHeight) {
             mouseDown = true;
           
             selectedTool.down(x,y);
@@ -1755,7 +1871,7 @@ $(function() {
       if (e.which==1) {
         var x = $(this).data('x');
         var y = $(this).data('y');
-        if (controlDown && selectedTool != clipboard) {
+        if (controlDown && selectedTool != clipboard && selectedTool != addWidth && selectedTool != addHeight) {
           var eyeDropBrushType = tiles[x][y].type;
           setBrushTileType(eyeDropBrushType);
         } else {
@@ -2060,13 +2176,15 @@ $(function() {
   $('#toolClipboard').data('tool', clipboard);
   $('#tools .btn').click(function() {
     selectedTool.unselect.call(selectedTool);
+    $('#addWidth,#addHeight').removeClass('active').blur();
     $('#tools .btn').removeClass('active');
     $(this).toggleClass('active');
     selectedTool = $(this).data('tool');
     selectedTool.select.call(selectedTool);
-  })
+  });
 
   var selectedTool = pencil;
+  var oldTool = pencil;
   $('#toolPencil').toggleClass("active");
 //  $('#toolPencil').trigger('click');
 
@@ -2123,6 +2241,7 @@ $(function() {
     var optHeight = optResizeParams && optResizeParams.height;
     var deltaX = (optResizeParams && optResizeParams.deltaX) || 0;
     var deltaY = (optResizeParams && optResizeParams.deltaY) || 0;
+    var mapElem = optResizeParams && optResizeParams.mapElem;
     var canvas = document.getElementById('importCanvas');
     var ctx = canvas.getContext('2d');
     var json = JSON.parse(jsonString);
@@ -2132,10 +2251,17 @@ $(function() {
       var h = img.height;
       optWidth = optWidth || w;
       optHeight = optHeight || h;
-      canvas.width = w;
-      canvas.height = h;
-      ctx.drawImage(img,0,0);
-      var imgd = ctx.getImageData(0, 0, w, h).data;
+      if(mapElem) {
+        canvas.width = optWidth;
+        canvas.height = optHeight;
+        ctx.webkitImageSmoothingEnabled = ctx.imageSmoothingEnabled = ctx.mozImageSmoothingEnabled = ctx.oImageSmoothingEnabled = ctx.msImageSmoothinEnabled = false;
+        ctx.drawImage(img,0,0,optWidth,optHeight);
+      } else {
+        canvas.width = w;
+        canvas.height = h;
+        ctx.drawImage(img,0,0);
+      }
+      var imgd = ctx.getImageData(0, 0, mapElem?optWidth:w, mapElem?optHeight:h).data;
       var typeByColor = {};
       tileTypes.forEach(function(type) {
         typeByColor[type.rgb] = type;
@@ -2150,8 +2276,8 @@ $(function() {
           var sourceY = destY - deltaY;
           var type;
           //console.log('sourceX=', sourceX,'sourceY=', sourceY)
-          if (sourceX<w && sourceY<h && sourceX>=0 && sourceY>=0) {
-            var i = (sourceY*w + sourceX)*4;
+          if (sourceX<(mapElem?optWidth:w) && sourceY<(mapElem?optHeight:h) && sourceX>=0 && sourceY>=0) {
+            var i = (sourceY*(mapElem?optWidth:w) + sourceX)*4;
             var pixel = imgd[i] | (imgd[i+1]<<8) | (imgd[i+2]<<16);
             type = typeByColor[pixel] || emptyType;
             if(type == redSpawnType) {
@@ -2438,11 +2564,11 @@ $(function() {
     return json;
   }
   
-  function resizeTo(width, height, deltaX, deltaY) {
+  function resizeTo(width, height, deltaX, deltaY, mapElem) {
     var png = getPngBase64Url();
     var json = makeLogicString();
 
-    restoreFromPngAndJson(png, json, {width: width, height: height, deltaX: deltaX, deltaY: deltaY});
+    restoreFromPngAndJson(png, json, {width: width, height: height, deltaX: deltaX, deltaY: deltaY, mapElem: mapElem});
   }
 
   var $resizeWidthTo = $('#resizeWidthTo');
@@ -2456,10 +2582,8 @@ $(function() {
     $(this).toggleClass('active');
   });
   $('#resize').click(function(e) {
-    $resizeWidthTo.val('');
-    $resizeWidthTo.attr('placeholder',tiles.length);
-    $resizeHeightTo.val('');
-    $resizeHeightTo.attr('placeholder',tiles[0].length);
+    $resizeWidthTo.val('').attr('placeholder',tiles.length);
+    $resizeHeightTo.val('').attr('placeholder',tiles[0].length);
     $('#resizeDialog a').removeClass('active');
     
     $( "#resizeDialog" ).dialog({
@@ -2498,7 +2622,10 @@ $(function() {
             width = Math.max(1, width);
             height = Math.max(1, height);
           }
-          resizeTo(width, height, deltaX,deltaY);
+          if($('#resizeMapElem').is(':checked'))
+            resizeTo(width, height, 0, 0, true);
+          else
+            resizeTo(width, height, deltaX, deltaY);
           console.log('resizing to',width,height);
           $(this).dialog( "close" );
         }
@@ -2506,6 +2633,33 @@ $(function() {
     });
     
     e.preventDefault();
+  });
+  
+  $('#addWidth').click(function() {
+    $(this).toggleClass('active');
+    if($(this).hasClass('active')) {
+      if(selectedTool != addHeight)
+        oldTool = selectedTool;
+      $('#addHeight').removeClass('active');
+      selectedTool.unselect.call(selectedTool);
+      selectedTool = addWidth;
+    } else {
+      $(this).blur();
+      selectedTool = oldTool;
+    }
+  });
+  $('#addHeight').click(function() {
+    $(this).toggleClass('active');
+    if($(this).hasClass('active')) {
+      if(selectedTool != addWidth)
+        oldTool = selectedTool;
+      $('#addWidth').removeClass('active');
+      selectedTool.unselect.call(selectedTool);
+      selectedTool = addHeight;
+    } else {
+      $(this).blur();
+      selectedTool = oldTool;
+    }
   });
   
   $('#resizeDialog input').on('keydown',function(e){
