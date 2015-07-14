@@ -1,4 +1,5 @@
 $(function() {
+  $('[data-toggle="popover"]').popover();
   var quadrantCoords = {
     "132": [10.5, 7.5],
     "232": [11, 7.5],
@@ -1691,23 +1692,70 @@ $(function() {
 
   var controlDown = false;
   var shiftDown = false;
-
+  var oldTitles = {};
+  var toolTips = {toolPencil: 'p', toolBrush: 'b', toolLine: 'l', toolRectFill: 'r', toolRectOutline: 'd', toolCircleFill: 'o', toolCircleOutline: 'q', toolFill: 'f', toolWire: 'w', toolClipboard: 'c', 0: 'a', 5: 't', 7: 's', 8: 'u', 15: 'j', 16: 'k', 22: 'n', 23: 'm', 25: 'g', 26: 'h'};
+  var tipsTools = {};
+  var keys = {65: 'a', 66: 'b', 67: 'c', 68: 'd', 69: 'e', 70: 'f', 71: 'g', 72: 'h', 73: 'i', 74: 'j', 75: 'k', 76: 'l', 77: 'm', 78: 'n', 79: 'o', 80: 'p', 81: 'q', 82: 'r', 83: 's', 84: 't', 85: 'u', 86: 'v', 87: 'w', 88: 'x', 89: 'y', 90: 'z'};
+  for(var id in toolTips) {
+    tipsTools[toolTips[id]] = id;
+  }
+  var permPress = false;
+  var lastKeyPress = 0;
+  var clearable;
+  
   $(document).keydown(function(e) {
     if(e.which==17) { // control
       controlDown = true;
     } else if (e.which==16) {
       shiftDown = true;
+    } else if (e.which==18) { //alt key
+      var now = new Date();
+      permPress = false;
+      if(now - lastKeyPress <= 300) {
+        clearTimeout(clearable);
+        permPress = true;
+      }
+      lastKeyPress = now;
+      if(!permPress) {
+        $('#tools .btn').each(function(i,tool) {
+          var name = tool.id;
+          if(!oldTitles[name]) oldTitles[name] = $(tool).attr('title');
+          $(tool).attr({'data-toggle': 'tooltip', 'data-trigger': 'manual', 'data-container': 'body', 'title': toolTips[name]});
+        });
+        $('#palette > div > .tileBackground').each(function(i,tile) {
+          if(!toolTips[i]) return;
+          if(!oldTitles[i]) oldTitles[i] = $(tile).attr('title');
+          $(tile).attr({'data-toggle': 'tooltip', 'data-trigger': 'manual', 'data-container': 'body', 'title': toolTips[i]});
+        });
+        $('[data-toggle="tooltip"]').tooltip('show');
+      }
     } else if (e.which==90) { //z
       undo();
     } else if (e.which==89) { //y
       redo();
+    } else if (keys[e.which]) {
+      var tool = tipsTools[keys[e.which]];
+      if($.isNumeric(tool)) {
+        $('#palette > div > .tileBackground').eq(tool).click();
+      } else {
+        $('#'+tool).click();
+      }
     }
   }).keyup(function(e) {
     if (e.which==17) { // control
       controlDown = false;
-    }
-    if (e.which==16) {
+    } else if (e.which==16) {
       shiftDown = false;
+    } else if (e.which==18 && !permPress) {
+      clearable = setTimeout(function() {
+        $('#tools .btn').each(function(i,tool) {
+          $(tool).tooltip('destroy').attr('title', oldTitles[tool.id]);
+        });
+        $('#palette > div > .tileBackground').each(function(i,tile) {
+          if(!oldTitles[i]) return;
+          $(tile).tooltip('destroy').attr('title', oldTitles[i]);
+        });
+      }, 301);
     }
   });
   
