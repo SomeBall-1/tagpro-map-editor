@@ -414,6 +414,7 @@ $(function() {
     this.stateChange = fns.stateChange || function() {}; // arbitrary state change happened -- redraw tool state if necessary
     this.getState = fns.getState || function() {};
     this.setState = fns.setState || function() {};
+    this.override = fns.override; //needs to change when shift or ctrl key pressed
   }
   var pencil = new Tool({
     speculateDrag: function(x,y) {
@@ -547,6 +548,7 @@ $(function() {
   }
 
   var rectFill = new Tool({
+    override: true,
     down: function(x,y) {
       this.downX = x;
       this.downY = y;
@@ -567,6 +569,7 @@ $(function() {
   })
 
   var rectOutline = new Tool({
+    override: true,
     down: function(x,y) {
       this.downX = x;
       this.downY = y;
@@ -633,6 +636,7 @@ $(function() {
   }
 
   var circleFill = new Tool({
+    override: true,
     down: function(x,y) {
       this.downX = x;
       this.downY = y;
@@ -653,6 +657,7 @@ $(function() {
   })
 
   var circleOutline = new Tool({
+    override: true,
     down: function(x,y) {
       this.downX = x;
       this.downY = y;
@@ -673,6 +678,7 @@ $(function() {
   })
 
   var fill = new Tool({
+    override: true,
     speculateUp: function(x,y) {
       var targetType = tiles[x][y].type;
 
@@ -687,12 +693,14 @@ $(function() {
         toChange.forEach(function(tile) {
           for (var ix=tile.x-1; ix<=tile.x+1; ix++) {
             for (var iy=tile.y-1; iy<=tile.y+1; iy++) {
-              if (Math.abs(tile.x-ix) + Math.abs(tile.y-iy) == 1&& ix>=0 && iy>=0 && ix<width && iy<height) {
-                var test = tiles[ix][iy];
-                if (test.type == targetType && !inChanged[xy(test)]) {
-                  tempToChange.push(test);
-                  changed.push(new TileState(test, {type: brushTileType}));
-                  inChanged[xy(test)] = true;
+              if((shiftDown && (tile.x!=ix || tile.y!=iy)) || Math.abs(tile.x-ix) + Math.abs(tile.y-iy) == 1) {
+                if (ix>=0 && iy>=0 && ix<width && iy<height) {
+                  var test = tiles[ix][iy];
+                  if (test.type == targetType && !inChanged[xy(test)]) {
+                    tempToChange.push(test);
+                    changed.push(new TileState(test, {type: brushTileType}));
+                    inChanged[xy(test)] = true;
+                  }
                 }
               }
             }
@@ -809,6 +817,7 @@ $(function() {
   var clipboardTiles = [];
   var clipboardSource = [[]];
   var clipboard = new Tool({
+    override: true,
     unselect: function() {
       clipboardReady = false;
       clipboardTiles = [];
@@ -903,7 +912,7 @@ $(function() {
       this.downX = undefined;
       this.downY = undefined;
       
-      if(clipboardReady && controlDown) selectedTool.unselect.call(selectedTool);
+      if(clipboardReady && controlDown && !shiftDown) selectedTool.unselect.call(selectedTool);
       else if(clipboardTiles.length>1)
       {
         for(var i = 0;i < clipboardTiles.length;i++)
@@ -916,16 +925,23 @@ $(function() {
   });
   
   var addWidth = new Tool({
+    override: true,
     down: function(x,y) {
       this.downX = x;
       this.downY = y;
     },
     speculateDrag: function(x,y) {
-      var coordinates = rectFn(this.downX===undefined?x:this.downX, this.downY===undefined?y:this.downY, x, y, true);
+      var coordinates = [];
+      if(!this.downX) coordinates.push(x);
+      else {
+        for(var i = 0;i <= Math.abs(x-this.downX);i++) {
+          coordinates.push((x>this.downX) ? this.downX+i : x+i);
+        }
+      }
       var calculatedTiles = [];
       for (var i = 0; i < coordinates.length; i++) {
         for(var j = 0; j < height; j++) {
-          calculatedTiles.push(new TileState(tiles[coordinates[i].x][j], {mirror: true, redHighlight: controlDown?true:false}));
+          calculatedTiles.push(new TileState(tiles[coordinates[i]][j], {mirror: true, redHighlight: controlDown?true:false}));
         }
       }
       return new UndoStep(calculatedTiles);
@@ -940,6 +956,9 @@ $(function() {
       canvas.height = tiles[0].length;
       canvas.width = tiles.length+(controlDown?-extra:extra);
       var ctx = canvas.getContext('2d');
+      
+      if(!controlDown && canvas.width*canvas.height > 3600)
+        addAlert('warning','Warning: Maps larger than 3600 tiles may cause lag and may not be allowed to be tested by normal means',2000);
     
       var tilemap = [[]];
       for(var x = 0;x < width;x++) {
@@ -974,16 +993,23 @@ $(function() {
   });
   
   var addHeight = new Tool({
+    override: true,
     down: function(x,y) {
       this.downX = x;
       this.downY = y;
     },
     speculateDrag: function(x,y) {
-      var coordinates = rectFn(this.downX===undefined?x:this.downX, this.downY===undefined?y:this.downY, x, y, true);
+      var coordinates = [];
+      if(!this.downY) coordinates.push(y);
+      else {
+        for(var i = 0;i <= Math.abs(y-this.downY);i++) {
+          coordinates.push((y>this.downY) ? this.downY+i : y+i);
+        }
+      }
       var calculatedTiles = [];
       for (var i = 0; i < coordinates.length; i++) {
         for(var j = 0; j < width; j++) {
-          calculatedTiles.push(new TileState(tiles[j][coordinates[i].y], {mirror: true, redHighlight: controlDown?true:undefined}));
+          calculatedTiles.push(new TileState(tiles[j][coordinates[i]], {mirror: true, redHighlight: controlDown?true:undefined}));
         }
       }
       return new UndoStep(calculatedTiles);
@@ -998,7 +1024,10 @@ $(function() {
       canvas.height = tiles[0].length+(controlDown?-extra:extra);
       canvas.width = tiles.length;
       var ctx = canvas.getContext('2d');
-    
+      
+      if(!controlDown && canvas.width*canvas.height > 3600)
+        addAlert('warning','Warning: Maps larger than 3600 tiles may cause lag and may not be allowed to be tested by normal means',2000);
+      
       var tilemap = [[]];
       for(var x = 0;x < width;x++) {
         for(var y = 0;y < height;y++) {
@@ -1120,10 +1149,9 @@ $(function() {
     if(this.topType && this.topType != marsBallType)
     {
       if(this.type==tile.type && tile.type != floorType && tile.type != redFloorType && tile.type != blueFloorType) {
-        /*if(mouseDown)
-          alert('Spawns can only be placed on red, blue, or neutral floor tiles');
-        mouseDown = false;*/
-        delete this.topType;
+        addAlert('danger','Error: You cannot place a spawn tile on top of this type of tile',1500);
+				if(tile.topType) this.topType = tile.topType;
+        else delete this.topType;
       }
       if(tile.topType == marsBallType) {
         marsBallCount--;
@@ -1136,10 +1164,9 @@ $(function() {
         if(marsBallCount>2)
         {
           marsBallCount--;
-          /*if(mouseDown)
-            alert('Too many mars balls, only 2 are allowed per map. Remove a mars ball before placing a new one.');
-          mouseDown = false;*/
-          delete this.topType;
+          addAlert('danger','Error: Only 2 mars balls are allowed per map',1500);
+				if(tile.topType) this.topType = tile.topType;
+        else delete this.topType;
         }
       }
     }
@@ -1353,7 +1380,7 @@ $(function() {
   var floorType, emptyType, 
     wallType, wallTopLeftType, wallTopRightType, wallBottomLeftType, wallBottomRightType,
     blueFlagType, redFlagType, switchType, bombType, onFieldType, offFieldType,
-    redFieldType, blueFieldType, portalType, redSpawnType, blueSpawnType, redSpeedPadType, blueSpeedpadType, redFloorType, blueFloorType,
+    redFieldType, blueFieldType, portalType, redSpawnType, blueSpawnType, redSpeedpadType, blueSpeedpadType, redFloorType, blueFloorType,
     spikeType, powerupType, speedpadType,
     yellowFlagType, redEndzoneType, blueEndzoneType;
   
@@ -1371,7 +1398,7 @@ $(function() {
     powerupType = new TileType('powerup', 12,7, 0,255,0, "Powerup"),
     speedpadType = new TileType('speedpad', 0,0, 255,255,0, "Boost", {image: 'speedpad'}),
     blueSpeedpadType = new TileType('blueSpeedpad', 0,0, 115,115,255, "Blue Team Boost", {image: 'speedpadblue'}),
-    redSpeedPadType = new TileType('redSpeedpad', 0,0, 255,115,115, "Red Team Boost", {image: 'speedpadred'}),
+    redSpeedpadType = new TileType('redSpeedpad', 0,0, 255,115,115, "Red Team Boost", {image: 'speedpadred'}),
     redFloorType = new TileType('redFloor', 14,4, 220,186,186, "Red Speed Tile - Increases speed for non-flag-carriers."),
     blueFloorType = new TileType('blueFloor', 15,4, 187,184,221, "Blue Speed Tile - Increases speed for non-flag-carriers."),
     offFieldType = new TileType('offField', 12,3, 0,117,0, "Gate - Default Off", {logicFn: setFieldFn('off')}),
@@ -1408,7 +1435,7 @@ $(function() {
   function isMinusNinetyRotator(t1, t2) {
     t1.minusNinetyRotator = t2;
   }
-  areOpposites(redSpeedPadType, blueSpeedpadType);
+  areOpposites(redSpeedpadType, blueSpeedpadType);
   areOpposites(redFloorType, blueFloorType);
   areOpposites(redFieldType, blueFieldType);
   areOpposites(redFlagType, blueFlagType);
@@ -1541,6 +1568,7 @@ $(function() {
   var width;
   var $tiles;
   var tiles;
+  var currPos = {};
 
   function buildTilesWith(types) {
     width = types.length;
@@ -1689,13 +1717,32 @@ $(function() {
   $map.mouseleave(function(e) {
     //console.log('map left');
   });
+  
+	var clearables = [];
+  function addAlert(type,message,delay) {
+		if(clearables.length>=2) { //max out at 2 alerts on the screen at once
+    	$('#alerts :first').remove();
+			clearTimeout(clearables[0]);
+			clearables = clearables.slice(1);
+		}
+    var alert = '<div id="'+(new Date()).getTime()+'"class="alert alert-'+type+'" role="alert" style="margin: auto; width: 33%;">'+message+
+    '<button type="button" class="close" data-dismiss="alert">'+
+    '&times;</button></div>';
+    $('#alerts').append(alert);
+    clearables.push(setTimeout(function() {
+			$('#alerts > :not(.removing):first').addClass('removing').fadeOut('fast',function(){$(this).remove();});
+			clearables = clearables.slice(1);
+			console.log(clearables.length);
+		}, delay));
+  }
 
   var controlDown = false;
   var shiftDown = false;
   var oldTitles = {};
-  var toolTips = {toolPencil: 'p', toolBrush: 'b', toolLine: 'l', toolRectFill: 'r', toolRectOutline: 'd', toolCircleFill: 'o', toolCircleOutline: 'q', toolFill: 'f', toolWire: 'w', toolClipboard: 'c', 0: 'a', 5: 't', 7: 's', 8: 'u', 15: 'j', 16: 'k', 22: 'n', 23: 'm', 25: 'g', 26: 'h'};
+  var toolTips = {toolPencil: '1', toolBrush: '2', toolLine: '3', toolRectFill: '4', toolRectOutline: '5', toolCircleFill: '6', toolCircleOutline: '7', toolFill: '8', toolWire: '9', toolClipboard: '0',
+  0: 'q', 1: 'w', 2: 'e', 3: 'r', 4: 't', 5: 'f', 7: 's', 8: 'p', 12: 'n', 13: 'v', 14: 'b', 15: 'j', 16: 'k', 17: 'n', 18: 'm', 19: 'a', 20: 'u', 21: 'i', 22: 'g', 23: 'h', 24: 'l', 25: 'x', 26: 'c', 29: 'd'};
   var tipsTools = {};
-  var keys = {65: 'a', 66: 'b', 67: 'c', 68: 'd', 69: 'e', 70: 'f', 71: 'g', 72: 'h', 73: 'i', 74: 'j', 75: 'k', 76: 'l', 77: 'm', 78: 'n', 79: 'o', 80: 'p', 81: 'q', 82: 'r', 83: 's', 84: 't', 85: 'u', 86: 'v', 87: 'w', 88: 'x', 89: 'y', 90: 'z'};
+  var keys = {48: '0', 49: '1', 50: '2', 51: '3', 52: '4', 53: '5', 54: '6', 55: '7', 56: '8', 57: '9', 65: 'a', 66: 'b', 67: 'c', 68: 'd', 69: 'e', 70: 'f', 71: 'g', 72: 'h', 73: 'i', 74: 'j', 75: 'k', 76: 'l', 77: 'm', 78: 'n', 79: 'o', 80: 'p', 81: 'q', 82: 'r', 83: 's', 84: 't', 85: 'u', 86: 'v', 87: 'w', 88: 'x', 89: 'y', 90: 'z'};
   for(var id in toolTips) {
     tipsTools[toolTips[id]] = id;
   }
@@ -1703,12 +1750,33 @@ $(function() {
   var lastKeyPress = 0;
   var clearable;
   
+  function override() {
+    if(selectedTool.override && (selectedTool.speculateDrag || selectedTool.speculateUp)) {
+      clearPotentialHighlights();
+      //var st = selectedTool.getState();
+      var st = selectedTool.getState();
+      var change = selectedTool.speculateDrag && selectedTool.speculateDrag(currPos.x,currPos.y);
+      if (!change) {
+        change = selectedTool.speculateUp && selectedTool.speculateUp(currPos.x,currPos.y)
+      }
+      selectedTool.setState(st);
+      if(change) setSpeculativeStep(change);
+    }
+  }
+  
   $(document).keydown(function(e) {
     if(e.which==17) { // control
       controlDown = true;
+      override();
     } else if (e.which==16) {
       shiftDown = true;
+      override();
     } else if (e.which==18) { //alt key
+      if(permPress) {
+        $('[data-toggle="tooltip"]').tooltip('destroy');
+        permPress = false;
+        return;
+      }
       var now = new Date();
       permPress = false;
       if(now - lastKeyPress <= 300) {
@@ -1722,7 +1790,7 @@ $(function() {
           if(!oldTitles[name]) oldTitles[name] = $(tool).attr('title');
           $(tool).attr({'data-toggle': 'tooltip', 'data-trigger': 'manual', 'data-container': 'body', 'title': toolTips[name]});
         });
-        $('#palette > div > .tileBackground').each(function(i,tile) {
+        $('.tilePaletteOption').each(function(i,tile) {
           if(!toolTips[i]) return;
           if(!oldTitles[i]) oldTitles[i] = $(tile).attr('title');
           $(tile).attr({'data-toggle': 'tooltip', 'data-trigger': 'manual', 'data-container': 'body', 'title': toolTips[i]});
@@ -1736,7 +1804,7 @@ $(function() {
     } else if (keys[e.which]) {
       var tool = tipsTools[keys[e.which]];
       if($.isNumeric(tool)) {
-        $('#palette > div > .tileBackground').eq(tool).click();
+        $('.tilePaletteOption').eq(tool).click();
       } else {
         $('#'+tool).click();
       }
@@ -1744,14 +1812,16 @@ $(function() {
   }).keyup(function(e) {
     if (e.which==17) { // control
       controlDown = false;
+      override();
     } else if (e.which==16) {
       shiftDown = false;
+      override();
     } else if (e.which==18 && !permPress) {
       clearable = setTimeout(function() {
         $('#tools .btn').each(function(i,tool) {
           $(tool).tooltip('destroy').attr('title', oldTitles[tool.id]);
         });
-        $('#palette > div > .tileBackground').each(function(i,tile) {
+        $('.tilePaletteOption').each(function(i,tile) {
           if(!oldTitles[i]) return;
           $(tile).tooltip('destroy').attr('title', oldTitles[i]);
         });
@@ -1768,8 +1838,8 @@ $(function() {
   var mouseDown = false;
   $map.on('mouseenter', '.tile', function(e) {
 
-    var x = $(this).data('x');
-    var y = $(this).data('y');
+    var x = currPos.x = $(this).data('x');
+    var y = currPos.y = $(this).data('y');
 
     if (!selectedTool) return;
 
@@ -1780,7 +1850,7 @@ $(function() {
         change = selectedTool.speculateUp && selectedTool.speculateUp(x,y)
       }
       selectedTool.setState(st);
-      setSpeculativeStep(change);
+      if(change) setSpeculativeStep(change);
       return;
     }
     })
@@ -1900,8 +1970,8 @@ $(function() {
     })
     .on('mousemove', '.tile', function(e) {
       if(e.buttons!=1) mouseDown = false; //can drag outside $map and back in, but mouseDown is not stuck if mouseup occurs outside $map
-      var x = $(this).data('x');
-      var y = $(this).data('y');
+      var x = currPos.x = $(this).data('x');
+      var y = currPos.y = $(this).data('y');
       if (selectedTool && mouseDown) {
         var change = selectedTool.speculateDrag && selectedTool.speculateDrag(x,y);
         if (change) {
@@ -1917,8 +1987,8 @@ $(function() {
     })
     .on('mouseup', '.tile', function(e) {
       if (e.which==1) {
-        var x = $(this).data('x');
-        var y = $(this).data('y');
+        var x = currPos.x = $(this).data('x');
+        var y = currPos.y = $(this).data('y');
         if (controlDown && selectedTool != clipboard && selectedTool != addWidth && selectedTool != addHeight) {
           var eyeDropBrushType = tiles[x][y].type;
           setBrushTileType(eyeDropBrushType);
@@ -2028,6 +2098,7 @@ $(function() {
   $('#save').click(function() {
     localStorage.setItem('png', getPngBase64Url());
     localStorage.setItem('json', makeLogicString());
+    addAlert('success','Map successfully saved!',1000);
   });
 
   function isValidMapStr() {
@@ -2051,7 +2122,7 @@ $(function() {
   }
 
   $('#test, #testeu').click(function(e) {
-    alert("Cannot test from this page");
+    addAlert('danger',"Error: Cannot test from this page",1000);
     /*var validStr = isValidMapStr();
     if (validStr != "Valid") {
       alert(validStr);
@@ -2083,7 +2154,7 @@ $(function() {
     [wallType, wallTopLeftType, wallTopRightType, wallBottomLeftType, wallBottomRightType, floorType, emptyType], 
     [spikeType, powerupType, portalType, gravityWellType, marsBallType],
     [yellowFlagType, redFlagType, blueFlagType, redSpawnType, blueSpawnType, redEndzoneType, blueEndzoneType],
-    [speedpadType, redSpeedPadType, blueSpeedpadType, '', '', redFloorType, blueFloorType],
+    [speedpadType, redSpeedpadType, blueSpeedpadType, '', '', redFloorType, blueFloorType],
     [switchType, offFieldType, onFieldType, redFieldType, blueFieldType, '', bombType]
   ];
 
@@ -2650,21 +2721,29 @@ $(function() {
           }
           var deltaX = getDelta(oldWidth, width, $resizeAnchorLeft.hasClass('active'), $resizeAnchorRight.hasClass('active'));
           var deltaY = getDelta(oldHeight, height, $resizeAnchorTop.hasClass('active'), $resizeAnchorBottom.hasClass('active'));
+          
+          $('body').css('cursor','wait');
+          var delay = 0;
           if (width * height > 3600) {
-            if (!confirm('It\'s currently not possible to test maps larger than 3600 tiles.\nVery large maps can (will) lag your browser as well.\nAre you sure you want to resize?')) {
+            delay = 2000;
+            addAlert('warning','Warning: Maps larger than 3600 tiles may cause lag and may not be allowed to be tested by normal means',delay);
+            /*if (!confirm('It\'s currently not possible to test maps larger than 3600 tiles.\nVery large maps can (will) lag your browser as well.\nAre you sure you want to resize?')) {
               $('#resizeWidth').text(tiles.length);
               $('#resizeHeight').text(tiles[0].length);
               e.preventDefault();
               return;
-            }
+            }*/
           } else if ( width < 1 || height < 1) {
-            alert('Min width/height is 1.');
+            delay = 2000;
+            addAlert('warning','Warning: The minimum width and height are 1, any smaller values have been changed to 1',delay);
             width = Math.max(1, width);
             height = Math.max(1, height);
           }
-          resizeTo(width, height, deltaX, deltaY);
-          console.log('resizing to',width,height);
           $(this).dialog( "close" );
+          setTimeout(function() {
+            resizeTo(width, height, deltaX, deltaY);
+            console.log('resizing to',width,height);
+          }, delay);
         }
       }
     });
@@ -2950,11 +3029,12 @@ $(function() {
           var width = tiles.length * (type[0] ? 2 : 1);
           var height = tiles[0].length * (type[1] ? 2 : 1);
           if (width * height > 3600) {
-            if (!confirm('It\'s currently not possible to test maps larger than 3600 tiles.\nVery large maps can (will) lag your browser as well.\nAre you sure you want to resize?')) {
+            addAlert('warning','Warning: Maps larger than 3600 tiles may cause lag and may not be allowed to be tested by normal means',2000);
+            /*if (!confirm('It\'s currently not possible to test maps larger than 3600 tiles.\nVery large maps can (will) lag your browser as well.\nAre you sure you want to resize?')) {
               e.preventDefault();
               $(this).dialog('close');
               return;
-            }
+            }*/
           }
           mirrorMap(type);
           $(this).dialog('close');
