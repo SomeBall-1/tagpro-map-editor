@@ -1834,6 +1834,7 @@ $(function() {
 
   var lineAnchor = null;
 
+  var count = 0;
   var mouseDown = false;
   $map.on('mouseenter', '.tile', function(e) {
 
@@ -1980,6 +1981,13 @@ $(function() {
         }
         mouseDown = false;
         cleanDirtyWalls();
+
+        if(++count>=20) {
+          count = 0;
+          localStorage.setItem('png', getPngBase64Url());
+          localStorage.setItem('json', makeLogicString(null,true));
+          addAlert('success','Map auto-saved!',1000);
+        }
       }
     });
 
@@ -2069,12 +2077,6 @@ $(function() {
     $(jsonDropArea).attr('download',$('#mapName').val()+'.json').attr('href', 'data:application/json;base64,' + Base64.encode(makeLogicString()));
     $(pngDropArea).attr('download',$('#mapName').val()+'.png').attr('href', getPngBase64Url());
   });
-
-  /*$('#save').click(function() {
-    localStorage.setItem('png', getPngBase64Url());
-    localStorage.setItem('json', makeLogicString());
-    addAlert('success','Map successfully saved!',1000);
-  });*/
 
   function isValidMapStr() {
     var hasRedFlag = false;
@@ -2497,8 +2499,11 @@ $(function() {
     }
   });
 
-  function makeLogicString(json) {
-    return JSON.stringify(json || makeLogic(), null, 2);
+  function makeLogicString(json,notpretty) {
+    if(notpretty)
+      return JSON.stringify(json || makeLogic());
+    else
+      return JSON.stringify(json || makeLogic(), null, 2);
   }
   
   function transformLogic(json,tilemap,tilemap2) {
@@ -2803,6 +2808,7 @@ $(function() {
     if (confirm('Are you sure you want to clear the map?')) {
       clearMap();
     }
+    $(this).blur();
   });
   
   function enableZoomButtons() {
@@ -2997,9 +3003,117 @@ $(function() {
       "Drag a .png file and a .json file from your file manager onto their respective squares. When both are added, hit Import to apply them to the current map.\n\n" +
       "Exporting Map:\n" +
       "Hit Export. The .png and .json files can then be dragged or clicked from their respective squares.")
-  })
+  });
   
-  var savedPng = localStorage.getItem('png')
-  var savedJson = localStorage.getItem('json')
+  window.addEventListener("beforeunload", function (e) {
+    localStorage.setItem('png', getPngBase64Url());
+    localStorage.setItem('json', makeLogicString(null,true));
+    addAlert('success','Map auto-saved!',1000);
+  });
+  
+  function formatDate(date) {
+    var myDate = new Date();
+    var month = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var hours = date.getHours();
+    var minutes = date.getMinutes();
+    var ampm = hours >= 12 ? 'pm' : 'am';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    minutes = minutes < 10 ? '0'+minutes : minutes;
+    var strTime = hours + ':' + minutes + ampm;
+    //"13 Jan 2012 11:00am";
+    return date.getDate()+" "+month[date.getMonth()]+" "+date.getFullYear()+" "+strTime;
+  }
+  
+  $('.slot').click(function() {
+    var old = $(this).hasClass('active');
+    $('.slot').removeClass('active');
+    if(!old) {
+      $(this).addClass('active');
+      if($(this).hasClass('empty')) {
+        $('.slot-buttons').children().addClass('disabled');
+        $('#saveToSlot').removeClass('disabled');
+      } else {
+        $('.slot-buttons').children().removeClass('disabled');
+      }
+    } else {
+      $('.slot-buttons').children().addClass('disabled');
+    }
+  });
+  $('.slot button').click(function(e) {
+    e.stopPropagation();
+    var slot = $(this).closest('.slot');
+    var a = document.createElement('a');
+    var type = $(this).is(':first-child') ? 'png' : 'json';
+    var json = makeLogic();
+    a.href = slot.data(type);
+    if(type==='json')
+      a.href = 'data:application/json;base64,' + Base64.encode(makeLogicString(JSON.parse(slot.data(type))));
+    a.download = json.info.name+'.'+type;
+    a.click();
+    $(this).blur();
+  });
+  
+  $('#editSlot').click(function() {
+    var slot = $('.slot.active');
+    restoreFromPngAndJson(slot.data('png'), slot.data('json'));
+    $(this).blur();
+    $('#saveDialog').modal('hide');
+  });
+  $('#saveToSlot').click(function() {
+    var which = $('.slot.active').attr('id').slice(-1);
+    var confirmed = true;
+    if(!$('.slot.active').hasClass('empty')) {
+      confirmed = confirm('Are you sure you want to overwrite the map already saved in this slot? This cannot be undone!');
+    }
+    if(confirmed) {
+      var png = getPngBase64Url();
+      var json = makeLogic();
+      var title = json.info.name;
+      var now = formatDate(new Date());
+      var slot = $('#slot'+which).removeClass('empty').data('png',png).data('json',makeLogicString(json,true));
+      slot.find('p:first').css('color','#333').text(json.info.name || 'Unititled');
+      slot.find('p:last').text(now || 'Unknown');
+      slot.find('button').removeClass('disabled');
+      localStorage.setItem('png'+which, png);
+      localStorage.setItem('json'+which, makeLogicString(json,true));
+      localStorage.setItem('title'+which, title);
+      localStorage.setItem('date'+which, now);
+      addAlert('success','Map successfully saved to slot '+which+'!',1000);
+      $('.slot-buttons').children().removeClass('disabled');
+    }
+    $(this).blur();
+  });
+  $('#clearSlot').click(function() {
+    if(confirm('Are you sure you want to clear this slot? This cannot be undone!')) {
+      var which = $('.slot.active').attr('id').slice(-1);
+      var slot = $('.slot.active').addClass('empty').removeClass('active').removeData('png').removeData('json');
+      slot.find('p:first').css('color','#888').text('Empty');
+      slot.find('p:last').text('');
+      slot.find('button').addClass('disabled');
+      $('.slot-buttons').children().addClass('disabled');
+      localStorage.removeItem('png'+which);
+      localStorage.removeItem('json'+which);
+      localStorage.removeItem('title'+which);
+      localStorage.removeItem('date'+which);
+    }
+    $(this).blur();
+  });
+  
+  var slotCount = 3;
+  for(var i = 1;i <= slotCount;i++) {
+    var savedPng = localStorage.getItem('png'+i);
+    var savedJson = localStorage.getItem('json'+i);
+    var savedTitle = localStorage.getItem('title'+i);
+    var savedDate = localStorage.getItem('date'+i);
+    if(savedPng && savedJson) {
+      var slot = $('#slot'+i).removeClass('empty').data('png',savedPng).data('json',savedJson);
+      slot.find('p:first').css('color','#333').text(savedTitle || 'Unititled');
+      slot.find('p:last').text(savedDate || 'Unknown');
+      slot.find('button').removeClass('disabled');
+    }
+  }
+  var savedPng = localStorage.getItem('png');
+  var savedJson = localStorage.getItem('json');
   restoreFromPngAndJson(savedPng, savedJson, undefined, true);
 });
