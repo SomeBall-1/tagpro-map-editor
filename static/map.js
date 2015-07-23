@@ -1150,7 +1150,7 @@ $(function() {
     {
       if(this.type==tile.type && tile.type != floorType && tile.type != redFloorType && tile.type != blueFloorType) {
         addAlert('danger','Error: You cannot place a spawn tile on top of this type of tile',1500);
-				if(tile.topType) this.topType = tile.topType;
+        if(tile.topType) this.topType = tile.topType;
         else delete this.topType;
       }
       if(tile.topType == marsBallType) {
@@ -1165,7 +1165,7 @@ $(function() {
         {
           marsBallCount--;
           addAlert('danger','Error: Only 2 mars balls are allowed per map',1500);
-				if(tile.topType) this.topType = tile.topType;
+        if(tile.topType) this.topType = tile.topType;
         else delete this.topType;
         }
       }
@@ -1718,22 +1718,21 @@ $(function() {
     //console.log('map left');
   });
   
-	var clearables = [];
+  var clearables = [];
   function addAlert(type,message,delay) {
-		if(clearables.length>=2) { //max out at 2 alerts on the screen at once
-    	$('#alerts :first').remove();
-			clearTimeout(clearables[0]);
-			clearables = clearables.slice(1);
-		}
-    var alert = '<div id="'+(new Date()).getTime()+'"class="alert alert-'+type+'" role="alert" style="margin: auto; width: 33%;">'+message+
+    if(clearables.length>=2) { //max out at 2 alerts on the screen at once
+      $('#alerts :first').remove();
+      clearTimeout(clearables[0]);
+      clearables = clearables.slice(1);
+    }
+    var alert = '<div id="'+(new Date()).getTime()+'"class="alert alert-'+type+'" role="alert" style="margin: auto;">'+message+
     '<button type="button" class="close" data-dismiss="alert">'+
     '&times;</button></div>';
     $('#alerts').append(alert);
     clearables.push(setTimeout(function() {
-			$('#alerts > :not(.removing):first').addClass('removing').fadeOut('fast',function(){$(this).remove();});
-			clearables = clearables.slice(1);
-			console.log(clearables.length);
-		}, delay));
+      $('#alerts > :not(.removing):first').addClass('removing').fadeOut('fast',function(){$(this).remove();});
+      clearables = clearables.slice(1);
+    }, delay));
   }
 
   var controlDown = false;
@@ -1883,86 +1882,62 @@ $(function() {
           var y = $(this).data('y');
         
           if (tiles[x][y].type == portalType) {
-            /*var cooldown = parseFloat(prompt("Cooldown time (in seconds):", (tiles[x][y].cooldown>=0) ? tiles[x][y].cooldown : defaultPortalCooldown));
-            if (!(cooldown>=0)) return;*/
-          
             var cooldown = (tiles[x][y].cooldown!=undefined) ? tiles[x][y].cooldown : defaultPortalCooldown;
-            $('#portalCooldown').val('');
-            $('#portalCooldown').attr('placeholder',cooldown);
+            $('#portalCooldown').val('').attr('placeholder',cooldown);
             $('#portalAll').hide();
-            $( "#portalOptions" ).dialog({
-              modal: true,
-              title: 'Portal',
-              buttons: {
-                "Save": function() {
-                  cooldown = parseFloat($('#portalCooldown').val());
-                  $(this).dialog( "close" );
-                  if(!(cooldown>=0)) return;
+            $('#portalOptions .modal-header').css('background-color','#5bc0de');
+            $('#portalOptions').modal('show');
+            setTimeout(function() {$('#portalCooldown').focus();}, 100);
+            $( "#portalSubmit" ).off('click').click(function() {
+              cooldown = parseFloat($('#portalCooldown').val());
+              if(!(cooldown>=0)) return;
                 
-                  var change = new UndoStep([
-                    new TileState(tiles[x][y], {cooldown:cooldown})
-                  ]);
-                  applySymmetry(change);
-                  applyStep(change);
-                }
-              }
+              var change = new UndoStep([
+                new TileState(tiles[x][y], {cooldown:cooldown})
+              ]);
+              applySymmetry(change);
+              applyStep(change);
             });
           } else if (tiles[x][y].type == switchType) {
-            /*var timer = parseFloat(prompt("Button timer time (in seconds). Input a negative value for permanent buttons:", (!!tiles[x][y].timer) ? tiles[x][y].timer : defaultButtonTimer));
-            if (!timer) return;*/
-          
             var timer = (tiles[x][y].timer!=undefined) ? tiles[x][y].timer : defaultButtonTimer;
-            $('#switchTimer').val('');
-            $('#switchTimer').attr('placeholder',timer);
+            $('#switchTimer').val('').attr('placeholder',timer);
             $('#switchAll').hide();
-            $( "#switchOptions" ).dialog({
-              modal: true,
-              title: 'Button',
-              buttons: {
-                "Save": function() {
-                  timer = parseFloat($('#switchTimer').val());
-                  $(this).dialog( "close" );
-                  if(!timer) return;
+            $('#switchOptions .modal-header').css('background-color','#5bc0de');
+            $('#switchOptions').modal('show');
+            setTimeout(function() {$('#switchTimer').focus();}, 100);
+            $( "#switchSubmit" ).off('click').click(function() {
+              timer = parseFloat($('#switchTimer').val());
+              if(!timer) return;
 
-                  var change = new UndoStep([
-                    new TileState(tiles[x][y], {timer:timer})
-                  ]);
-                  applySymmetry(change);
-                  applyStep(change);
-                }
-              }
+              var change = new UndoStep([
+                new TileState(tiles[x][y], {timer:timer})
+              ]);
+              applySymmetry(change);
+              applyStep(change);
             });
           } else if (tiles[x][y].topType == redSpawnType || tiles[x][y].topType == blueSpawnType) {
-            /*var timer = parseFloat(prompt("Button timer time (in seconds). Input a negative value for permanent buttons:", (!!tiles[x][y].timer) ? tiles[x][y].timer : defaultButtonTimer));
-            if (!timer) return;*/
-          
             var radius = (tiles[x][y].radius!=undefined) ? tiles[x][y].radius : defaultSpawnRadius;
             var weight = (tiles[x][y].weight!=undefined) ? tiles[x][y].weight : defaultSpawnWeight;
-            $('#spawnRadius').val('');
-            $('#spawnRadius').attr('placeholder',radius);
-            $('#spawnWeight').val('');
-            $('#spawnWeight').attr('placeholder',weight);
+            $('#spawnRadius').val('').attr('placeholder',radius);
+            $('#spawnWeight').val('').attr('placeholder',weight);
             $('#spawnAll').hide();
-            $( "#spawnOptions" ).dialog({
-              modal: true,
-              title: 'Spawn Point',
-              buttons: {
-                "Save": function() {
-                  radius = parseFloat($('#spawnRadius').val());
-                  weight = parseFloat($('#spawnWeight').val());
-                  $(this).dialog( "close" );
-                  if(!(radius>=0) && !(weight>=1)) return;
-                  var changes = {};
-                  if(radius>=0) changes.radius = radius;
-                  if(weight>=1) changes.weight = weight;
+            $('#spawnOptions .modal-header').css('background-color','#5bc0de');
+            $('#spawnOptions').modal('show');
+            setTimeout(function() {$('#spawnRadius').focus();}, 100);
+            $( "#spawnSubmit" ).off('click').click(function() {
+              radius = parseFloat($('#spawnRadius').val());
+              weight = parseFloat($('#spawnWeight').val());
+              if(!(radius>=0) && !(weight>=1)) return;
+                  
+              var changes = {};
+              if(radius>=0) changes.radius = radius;
+              if(weight>=1) changes.weight = weight;
                 
-                  var change = new UndoStep([
-                    new TileState(tiles[x][y], changes)
-                  ]);
-                  applySymmetry(change);
-                  applyStep(change);
-                }
-              }
+              var change = new UndoStep([
+                new TileState(tiles[x][y], changes)
+              ]);
+              applySymmetry(change);
+              applyStep(change);
             });
           }
         }
@@ -2095,11 +2070,11 @@ $(function() {
     $(pngDropArea).attr('download',$('#mapName').val()+'.png').attr('href', getPngBase64Url());
   });
 
-  $('#save').click(function() {
+  /*$('#save').click(function() {
     localStorage.setItem('png', getPngBase64Url());
     localStorage.setItem('json', makeLogicString());
     addAlert('success','Map successfully saved!',1000);
-  });
+  });*/
 
   function isValidMapStr() {
     var hasRedFlag = false;
@@ -2188,89 +2163,65 @@ $(function() {
           $('#toolPencil').trigger('click');
         }
         setBrushTileType(type);
-        //}).mousedown(function(e) {
-        //if(e.which==3)
         if(e.shiftKey)
         {
           if (type == portalType) {
-            /*var cooldown = parseFloat(prompt("Change all portals to new default cooldown time (in seconds):", defaultPortalCooldown));
-            if (!(cooldown>=0)) return;*/
-            
             var cooldown = defaultPortalCooldown;
-            $('#portalCooldown').val('');
-            $('#portalCooldown').attr('placeholder',cooldown);
+            $('#portalCooldown').val('').attr('placeholder',cooldown);
             $('#portalAll').show();
-            $( "#portalOptions" ).dialog({
-              modal: true,
-              title: 'All Portals',
-              buttons: {
-                "Save": function() {
-                  cooldown = parseFloat($('#portalCooldown').val());
-                  $(this).dialog( "close" );
-                  if(!(cooldown>=0)) return;
-                
+            $('#portalOptions .modal-header').css('background-color','#428bca');
+            $('#portalOptions').modal('show');
+            setTimeout(function() {$('#portalCooldown').focus();}, 100);
+            $( "#portalSubmit" ).off('click').click(function() {
+              cooldown = parseFloat($('#portalCooldown').val());
+              if(!(cooldown>=0)) return;
             
-                  defaultPortalCooldown = cooldown;
-                  if($(this).find('input:checked').val()=='all')
-                    applyLargeStep(type, {cooldown: cooldown});
-                }
-              }
+              defaultPortalCooldown = cooldown;
+              if($('#portalOptions').find('input:checked').val()=='all')
+                applyLargeStep(type, {cooldown: undefined});
             });
           } else if (type == switchType) {
-            /*var timer = parseFloat(prompt("Change all buttons to new default button timer time (in seconds). Input a negative value for permanent buttons:", defaultButtonTimer));
-            if (!timer) return;*/
-            
             var timer = defaultButtonTimer;
-            $('#switchTimer').val('');
-            $('#switchTimer').attr('placeholder',timer);
+            $('#switchTimer').val('').attr('placeholder',timer);
             $('#switchAll').show();
-            $( "#switchOptions" ).dialog({
-              modal: true,
-              title: 'All Button',
-              buttons: {
-                "Save": function() {
-                  timer = parseFloat($('#switchTimer').val());
-                  $(this).dialog( "close" );
-                  if(!timer) return;
+            $('#switchOptions .modal-header').css('background-color','#428bca');
+            $('#switchOptions').modal('show');
+            setTimeout(function() {$('#switchTimer').focus();}, 100);
+            $( "#switchSubmit" ).off('click').click(function() {
+              timer = parseFloat($('#switchTimer').val());
+              if(!timer) return;
                   
-                  defaultButtonTimer = timer;
-                  if($(this).find('input:checked').val()=='all')
-                    applyLargeStep(type, {timer: timer});
-                }
-              }
+              defaultButtonTimer = timer;
+              if($('#switchOptions').find('input:checked').val()=='all')
+                applyLargeStep(type, {timer: undefined});
             });
           } else if (type == redSpawnType || type == blueSpawnType) {
             var radius = defaultSpawnRadius;
             var weight = defaultSpawnWeight;
-            $('#spawnRadius').val('');
-            $('#spawnRadius').attr('placeholder',radius);
-            $('#spawnWeight').val('');
-            $('#spawnWeight').attr('placeholder',weight);
+            $('#spawnRadius').val('').attr('placeholder',radius);
+            $('#spawnWeight').val('').attr('placeholder',weight);
             $('#spawnAll').show();
-            $( "#spawnOptions" ).dialog({
-              modal: true,
-              title: 'All Spawn Points',
-              buttons: {
-                "Save": function() {
-                  radius = parseFloat($('#spawnRadius').val());
-                  weight = parseFloat($('#spawnWeight').val());
-                  $(this).dialog( "close" );
-                  if(!(radius>=0) && !(weight>=1)) return;
-                  var changes = {};
-                  if(radius>=0) {
-                    defaultSpawnRadius = radius;
-                    changes.radius = radius;
-                  }
-                  if(weight>=1) {
-                    defaultSpawnWeight = weight;
-                    changes.weight = weight;
-                  }
+            $('#spawnOptions .modal-header').css('background-color','#428bca');
+            $('#spawnOptions').modal('show');
+            setTimeout(function() {$('#spawnRadius').focus();}, 100);
+            $( "#spawnSubmit" ).off('click').click(function() {
+              radius = parseFloat($('#spawnRadius').val());
+              weight = parseFloat($('#spawnWeight').val());
+              if(!(radius>=0) && !(weight>=1)) return;
+              
+              var changes = {};
+              if(radius>=0) {
+                defaultSpawnRadius = radius;
+                changes.radius = undefined;
+              }
+              if(weight>=1) {
+                defaultSpawnWeight = weight;
+                changes.weight = undefined;
+              }
                   
-                  if($(this).find('input:checked').val()=='all') {
-                    applyLargeStep(redSpawnType, changes);
-                    applyLargeStep(blueSpawnType, changes);
-                  }
-                }
+              if($('#spawnOptions').find('input:checked').val()=='all') {
+                applyLargeStep(redSpawnType, changes);
+                applyLargeStep(blueSpawnType, changes);
               }
             });
           }
@@ -2695,59 +2646,52 @@ $(function() {
   $('#resize').click(function(e) {
     $resizeWidthTo.val('').attr('placeholder',tiles.length);
     $resizeHeightTo.val('').attr('placeholder',tiles[0].length);
-    $('#resizeDialog a').removeClass('active');
+    setTimeout(function(){$resizeWidthTo.focus();},100);
+    e.preventDefault();
+  });
     
-    $( "#resizeDialog" ).dialog({
-      height: 300,
-      modal: true,
-      buttons: {
-        "Resize": function() {
-          var oldWidth = tiles.length;
-          var oldHeight = tiles[0].length;
+  $('#resizeSubmit').click(function(e) {
+    var oldWidth = tiles.length;
+    var oldHeight = tiles[0].length;
           
-          var width = parseInt($resizeWidthTo.val(),10);
-          var height = parseInt($resizeHeightTo.val(),10);
-          if(width==undefined) width = oldWidth;
-          if(height==undefined) height = oldHeight;
+    var width = parseInt($resizeWidthTo.val(),10);
+    var height = parseInt($resizeHeightTo.val(),10);
+    if(width==undefined) width = oldWidth;
+    if(height==undefined) height = oldHeight;
           
-          function getDelta(oldSize, newSize, anchorMin, anchorMax) {
-            if (anchorMin < anchorMax) {
-              return 0;
-            } else if (anchorMin > anchorMax) {
-              return newSize-oldSize;
-            } else {
-              return Math.round((newSize-oldSize)/2);
-            }
-          }
-          var deltaX = getDelta(oldWidth, width, $resizeAnchorLeft.hasClass('active'), $resizeAnchorRight.hasClass('active'));
-          var deltaY = getDelta(oldHeight, height, $resizeAnchorTop.hasClass('active'), $resizeAnchorBottom.hasClass('active'));
-          
-          $('body').css('cursor','wait');
-          var delay = 0;
-          if (width * height > 3600) {
-            delay = 2000;
-            addAlert('warning','Warning: Maps larger than 3600 tiles may cause lag and may not be allowed to be tested by normal means',delay);
-            /*if (!confirm('It\'s currently not possible to test maps larger than 3600 tiles.\nVery large maps can (will) lag your browser as well.\nAre you sure you want to resize?')) {
-              $('#resizeWidth').text(tiles.length);
-              $('#resizeHeight').text(tiles[0].length);
-              e.preventDefault();
-              return;
-            }*/
-          } else if ( width < 1 || height < 1) {
-            delay = 2000;
-            addAlert('warning','Warning: The minimum width and height are 1, any smaller values have been changed to 1',delay);
-            width = Math.max(1, width);
-            height = Math.max(1, height);
-          }
-          $(this).dialog( "close" );
-          setTimeout(function() {
-            resizeTo(width, height, deltaX, deltaY);
-            console.log('resizing to',width,height);
-          }, delay);
-        }
+    function getDelta(oldSize, newSize, anchorMin, anchorMax) {
+      if (anchorMin < anchorMax) {
+        return 0;
+      } else if (anchorMin > anchorMax) {
+        return newSize-oldSize;
+      } else {
+        return Math.round((newSize-oldSize)/2);
       }
-    });
-    
+    }
+    var deltaX = getDelta(oldWidth, width, $resizeAnchorLeft.hasClass('active'), $resizeAnchorRight.hasClass('active'));
+    var deltaY = getDelta(oldHeight, height, $resizeAnchorTop.hasClass('active'), $resizeAnchorBottom.hasClass('active'));
+          
+    $('body').css('cursor','wait');
+    var delay = 0;
+    if (width * height > 3600) {
+      delay = 2000;
+      addAlert('warning','Warning: Maps larger than 3600 tiles may cause lag and may not be allowed to be tested by normal means',delay);
+      /*if (!confirm('It\'s currently not possible to test maps larger than 3600 tiles.\nVery large maps can (will) lag your browser as well.\nAre you sure you want to resize?')) {
+        $('#resizeWidth').text(tiles.length);
+        $('#resizeHeight').text(tiles[0].length);
+        e.preventDefault();
+        return;
+      }*/
+    } else if ( width < 1 || height < 1) {
+      delay = 2000;
+      addAlert('warning','Warning: The minimum width and height are 1, any smaller values have been changed to 1',delay);
+      width = Math.max(1, width);
+      height = Math.max(1, height);
+    }
+    setTimeout(function() {
+      resizeTo(width, height, deltaX, deltaY);
+      console.log('resizing to',width,height);
+    }, delay);
     e.preventDefault();
   });
   
@@ -2778,28 +2722,36 @@ $(function() {
     }
   });
   
-  $('#resizeDialog input').on('keydown',function(e){
-    if(e.keyCode == $.ui.keyCode.ENTER){
+  var enterKey = 13;
+  $('#importExport').on('keydown',function(e){
+    e.stopPropagation();
+  });
+  $('#resizeDialog').on('keydown',function(e){
+    e.stopPropagation();
+    if(e.keyCode == enterKey){
       e.preventDefault();
-      $(this).parents('div').last().find('button:last').click();
+      $(this).find('button:last').click();
     }
   });
-  $('#portalOptions input').on('keydown',function(e){
-    if(e.keyCode == $.ui.keyCode.ENTER){
+  $('#portalOptions').on('keydown',function(e){
+    e.stopPropagation();
+    if(e.keyCode == enterKey){
       e.preventDefault();
-      $(this).parents('div').last().find('button:last').click();
+      $(this).find('button:last').click();
     }
   });
-  $('#switchOptions input').on('keydown',function(e){
-    if(e.keyCode == $.ui.keyCode.ENTER){
+  $('#switchOptions').on('keydown',function(e){
+    e.stopPropagation();
+    if(e.keyCode == enterKey){
       e.preventDefault();
-      $(this).parents('div').last().find('button:last').click();
+      $(this).find('button:last').click();
     }
   });
-  $('#spawnOptions input').on('keydown',function(e){
-    if(e.keyCode == $.ui.keyCode.ENTER){
+  $('#spawnOptions').on('keydown',function(e){
+    e.stopPropagation();
+    if(e.keyCode == enterKey){
       e.preventDefault();
-      $(this).parents('div').last().find('button:last').click();
+      $(this).find('button:last').click();
     }
   });
   
@@ -3011,37 +2963,33 @@ $(function() {
     };
   }
   $('#mirrorOptions a').click(function() {
-    $('#mirrorOptions a').removeClass('active');
-    $(this).toggleClass('active');
-  });
+      $('#mirrorOptions a').removeClass('active');
+      $(this).toggleClass('active');
+    });
   $('#mirror').click(function(e) {
     $('#mirrorOptions a').removeClass('active');
-    $( "#mirrorOptions" ).dialog({
-      modal: true,
-      buttons: {
-        "Mirror": function() {
-          if(!$(this).find('a.active').length)
-          {
-            $(this).dialog('close');
-            return;
-          }
-          var type = JSON.parse($(this).find('a.active').attr('value')); //[-2,0] = mirror on right, [-1,0] = left, [0,-1] = up, [0,-2] = down
-          var width = tiles.length * (type[0] ? 2 : 1);
-          var height = tiles[0].length * (type[1] ? 2 : 1);
-          if (width * height > 3600) {
-            addAlert('warning','Warning: Maps larger than 3600 tiles may cause lag and may not be allowed to be tested by normal means',2000);
-            /*if (!confirm('It\'s currently not possible to test maps larger than 3600 tiles.\nVery large maps can (will) lag your browser as well.\nAre you sure you want to resize?')) {
-              e.preventDefault();
-              $(this).dialog('close');
-              return;
-            }*/
-          }
-          mirrorMap(type);
-          $(this).dialog('close');
-        }
-      }
-    });
     e.preventDefault();
+  });
+  $( "#mirrorSubmit" ).click(function(e) {
+    if(!$('a.mirror-dir.active').length) return;
+    var type = JSON.parse($('a.mirror-dir.active').attr('value')); //[-2,0] = mirror on right, [-1,0] = left, [0,-1] = up, [0,-2] = down
+    var width = tiles.length * (type[0] ? 2 : 1);
+    var height = tiles[0].length * (type[1] ? 2 : 1);
+    if (width * height > 3600) {
+      addAlert('warning','Warning: Maps larger than 3600 tiles may cause lag and may not be allowed to be tested by normal means',2000);
+      /*if (!confirm('It\'s currently not possible to test maps larger than 3600 tiles.\nVery large maps can (will) lag your browser as well.\nAre you sure you want to resize?')) {
+        e.preventDefault();
+        return;
+      }*/
+    }
+    mirrorMap(type);
+    e.preventDefault();
+  });
+  $('#mirrorOptions').on('keydown',function(e){
+    if(e.keyCode == 13){
+      e.preventDefault();
+      $(this).find('button:last').click();
+    }
   });
   
   $('#dropHelp').click(function() {
